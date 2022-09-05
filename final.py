@@ -11,7 +11,6 @@ Provide command line arguments --recipient_email or --recipient_contact accordin
 It uses IP Webcam App for video input
 Google Playstore link - https://play.google.com/store/apps/details?id=com.pas.webcam&hl=en_IN&gl=US
 
-
 Author: Yash Indane
 Email: yashindane46@gmail.com
 """
@@ -19,14 +18,18 @@ Email: yashindane46@gmail.com
 import cv2
 import os
 import smtplib
-import imghdr
 import argparse
 import time
+import logging
+import ssl
 import numpy as np
 from datetime import datetime
-from email.message import EmailMessage
 from selenium import webdriver
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
 
+#Loading pretrained face classifier
 face_classifier = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 
 #Chrome options
@@ -47,8 +50,9 @@ chrome_options.add_argument('--disable-dev-shm-usage')
 chrome_options.add_argument('--no-sandbox')
 chrome_options.add_argument('--ignore-certificate-errors')
 
+
 #Sends WhatsApp alert message
-def send_alert_message(current_time: str) -> None:
+def send_alert_message(current_time:str) -> None:
     
     PHONE_NUMBER = RECIPIENT_CONTACT
     MESSAGE = f"Person detected in frame, Timestamp: [{current_time}]"
@@ -73,33 +77,55 @@ def send_alert_message(current_time: str) -> None:
        webdriver.ActionChains(driver).move_to_element(button).click(button).perform()
     except: driver.quit()
 
-    print(f"Alert message send to: {RECIPIENT_CONTACT}")
+    logging.info(f"SUCESS:Alert message send to: {RECIPIENT_CONTACT}")
 
     driver.quit()
+    
 
 #Send alert email and detected face image on gmail
-def send_email(current_time: str) -> None:
+def send_email(current_time:str) -> None:
     EMAIL_ADDRESS = os.environ.get("EMAIL")
     EMAIL_PASSWORD = os.environ.get("EMAIL_PASS")
 
-    msg = EmailMessage()
+    msg = MIMEMultipart()
     msg["Subject"] = "Secure Cam Alert"
     msg["From"] = EMAIL_ADDRESS
     msg["To"] = RECIPIENT_EMAIL
-    msg.set_content(f"Person detected Timestamp: [{current_time}]")
+
+    html = f'''
+    <html>
+        <body>
+            <p>Person detected Timestamp: <i>{current_time}</i></p>
+        </body>
+    </html>
+    '''
+
+    msg.attach(MIMEText(html, "html"))
 
     with open("face.png", "rb") as f:
-       file_data = f.read()
-       file_type = imghdr.what(f.name)
-       file_name = f.name
+       cropped_face_attachment = MIMEApplication(f.read())
+       cropped_face_attachment.add_header(
+        "Content-Disposition",
+        "attachment; filename=face.png"
+       )
 
-    msg.add_attachment(file_data, maintype="image", subtype=file_type, filename=file_name)
+    f.close()
+    
+    #Attaching cropped face
+    msg.attach(cropped_face_attachment)
+     
+    #Encrpyting communication
+    context = ssl.create_default_context()
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+    #Convert it as string
+    #msg = msg.as_string()
+     
+    #Connect to the Gmail SMTP server and Send Email
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as smtp:
        smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
        smtp.send_message(msg)
 
-    print(f"Alert email sent to: {RECIPIENT_EMAIL}")   
+    logging.info(f"SUCCESS: Alert email sent to: {RECIPIENT_EMAIL}")   
 
 
 #Detects face in frame
@@ -122,12 +148,15 @@ def face_detector(img, mode:str, size=0.5) -> None:
             #cv2.rectangle(img, (x, y), (x+w, y+h), (0, 255, 255), 2)
             #cv2.imshow('Face detection', img)
 
-    cv2.imshow('Face detection', img)
+    #cv2.imshow('Face detection', img)
 
 
-if __name__ == "__main__":
+if __name__=="__main__":
 
+    #Set logging configuration
+    logging.basicConfig(level=logging.NOTSET)
 
+    #Setting parser arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", help="alerting mode (whatsapp/email)")
     parser.add_argument("--ipwebcam", help="ipv4 address of ipwebcam")
@@ -136,7 +165,6 @@ if __name__ == "__main__":
      
     try:
        args = parser.parse_args()
-
        MODE = args.mode
        IP_WEBCAM_ADDRESS = args.ipwebcam
        RECIPIENT_EMAIL = args.recipient_email
@@ -144,30 +172,30 @@ if __name__ == "__main__":
 
        if MODE and IP_WEBCAM_ADDRESS:
           
-           if (MODE == "email" and RECIPIENT_EMAIL) or (MODE == "whatsapp" and RECIPIENT_CONTACT):
+           if (MODE=="email" and RECIPIENT_EMAIL) or (MODE=="whatsapp" and RECIPIENT_CONTACT):
 
               #Open Webcam
               cap = cv2.VideoCapture(0)
               address = f"https://{IP_WEBCAM_ADDRESS}:8080/video"
               cap.open(address)
+              logging.info("Success: Connected to ipwebcam")
 
               while True:
 
                  ret, frame = cap.read()
                  face_detector(frame, MODE)
                  #13 is the Enter Key
-                 if cv2.waitKey(1) == 13:
+                 if cv2.waitKey(1)==13:
                     break
 
               cap.release()
               cv2.destroyAllWindows()
 
            else:
-               print("Error: missing arguments --recipient_email or --recipient_contact according to your mode")
+               logging.error("Error: missing arguments --recipient_email or --recipient_contact according to your mode")
 
-       
        else:
-           print("Error: missing arguments --mode and --ipwebcam")
+           logging.error("Error: missing arguments --mode and --ipwebcam")
 
     except Exception as e:
-        print(e)
+        logging.error("Error:", e)

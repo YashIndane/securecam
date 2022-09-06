@@ -2,11 +2,11 @@ A Python script that sends alert on email or on Whatsapp when someone is detecte
 
 Usage -
 
-'''
+```
 $ python3 final.py --mode <email/whatsapp> --ipwebcam <webcam-address>
-'''
+```
 
-Provide command line arguments '''--recipient_email''' or '''--recipient_contact''' according to mode selected.
+Provide command line arguments ```--recipient_email``` or ```--recipient_contact``` according to mode selected.
 
 It uses IP Webcam App for video input.
 

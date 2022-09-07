@@ -4,7 +4,12 @@
 A Python script that sends alert on email or on whatsapp when someone is detected inlive footage. 
 
 Usage -
-$python3 final.py --mode <email/whatsapp> --ipwebcam <webcam-address>
+
+IPWEBCAM-MODE
+$python3 final.py --mode <email/whatsapp> --imode=1 --ipwebcam <webcam-address>
+
+SYSTEMWEBCAM-MODE
+$python3 final.py --mode <email/whatsapp> --imode=0
 
 Provide command line arguments --recipient_email or --recipient_contact according to mode selected.
 
@@ -14,6 +19,8 @@ Google Playstore link - https://play.google.com/store/apps/details?id=com.pas.we
 Author: Yash Indane
 Email: yashindane46@gmail.com
 """
+
+#Import modules
 
 import cv2
 import os
@@ -82,11 +89,14 @@ def send_alert_message(current_time:str) -> None:
     driver.quit()
     
 
-#Send alert email and detected face image on gmail
+#Send alert email and detected face image on Gmail
 def send_email(current_time:str) -> None:
+
+    #Senders email
     EMAIL_ADDRESS = os.environ.get("EMAIL")
     EMAIL_PASSWORD = os.environ.get("EMAIL_PASS")
-
+    
+    #Setting up email
     msg = MIMEMultipart()
     msg["Subject"] = "Secure Cam Alert"
     msg["From"] = EMAIL_ADDRESS
@@ -162,6 +172,7 @@ if __name__=="__main__":
     parser.add_argument("--ipwebcam", help="ipv4 address of ipwebcam")
     parser.add_argument("--recipient_email", help="email address of recipient")
     parser.add_argument("--recipient_contact", help="phone number of recipient")
+    parser.add_argument("--imode", help="camera input mode (1 for ipwebcam, 0 for system camera)")
      
     try:
        args = parser.parse_args()
@@ -169,16 +180,18 @@ if __name__=="__main__":
        IP_WEBCAM_ADDRESS = args.ipwebcam
        RECIPIENT_EMAIL = args.recipient_email
        RECIPIENT_CONTACT = args.recipient_contact
+       INPUT_MODE = args.imode
 
-       if MODE and IP_WEBCAM_ADDRESS:
+       if MODE and (IP_WEBCAM_ADDRESS or INPUT_MODE=="0") :
           
            if (MODE=="email" and RECIPIENT_EMAIL) or (MODE=="whatsapp" and RECIPIENT_CONTACT):
 
               #Open Webcam
               cap = cv2.VideoCapture(0)
-              address = f"https://{IP_WEBCAM_ADDRESS}:8080/video"
-              cap.open(address)
-              logging.info("Success: Connected to ipwebcam")
+              if INPUT_MODE=="1":
+                  address = f"https://{IP_WEBCAM_ADDRESS}:8080/video"
+                  cap.open(address)
+              logging.info("Success: Connected to ipwebcam" if INPUT_MODE=="1" else "Success: Connected to system webcam")
 
               while True:
 

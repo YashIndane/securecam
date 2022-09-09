@@ -3,13 +3,18 @@
 """
 A Python script that sends alert on email or on whatsapp when someone is detected inlive footage. 
 
-Usage -
+Usage-
+
+Export the sender's details-
+
+$ export EMAIL_ADDRESS=<VALUE>
+$ export EMAIL_PASSWORD=<VALUE>
 
 IPWEBCAM-MODE
-$python3 final.py --mode <email/whatsapp> --imode=1 --ipwebcam <webcam-address>
+$ sudo python3 -E final.py --mode <email/whatsapp> --imode=1 --ipwebcam <webcam-address>
 
 SYSTEMWEBCAM-MODE
-$python3 final.py --mode <email/whatsapp> --imode=0
+$ sudo python3 -E final.py --mode <email/whatsapp> --imode=0
 
 Provide command line arguments --recipient_email or --recipient_contact according to mode selected.
 
